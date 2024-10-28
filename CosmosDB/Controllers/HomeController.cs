@@ -7,10 +7,15 @@ namespace CosmosDB.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly CosmosDbservice cosmosDbservice;
-        public HomeController(CosmosDbservice cosmosDbservice)
+        private readonly CosmosDbservice cosmosDbService;
+        private static readonly List<string> categorias = new List<string>
         {
-            this.cosmosDbservice = cosmosDbservice;
+            "Certificação", "Gastronomia", "Tecnologia", "Saúde"
+        };
+
+        public HomeController(CosmosDbservice cosmosDbService)
+        {
+            this.cosmosDbService = cosmosDbService;
         }
 
         public IActionResult Index()
@@ -21,11 +26,6 @@ namespace CosmosDB.Controllers
         [HttpGet]
         public IActionResult CreateItem()
         {
-            List<string> categorias = new List<string>
-            {
-                "Certificação", "Gastronomia", "Tecnologia", "Saude"
-            };
-
             ViewBag.Categorias = new SelectList(categorias);
             return View();
         }
@@ -34,14 +34,45 @@ namespace CosmosDB.Controllers
         public async Task<IActionResult> CreateItem(Curso curso)
         {
             curso.id = Guid.NewGuid().ToString();
-            await this.cosmosDbservice.AddNewItemAsync(curso);
+            await this.cosmosDbService.AddNewItemAsync(curso);
             return RedirectToAction("ListAllItems");
         }
 
         [HttpGet]
-        public IActionResult ListAllItems()
+        public async Task<IActionResult> ListAllItems()
         {
-            return View();
+            var lista = await cosmosDbService.GetAllItemsAsync();
+            return View(lista);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> UpdateItem(string id, string categoria)
+        {
+            ViewBag.Categorias = new SelectList(categorias);
+
+            var curso = await cosmosDbService.FindItemAsync(id, categoria);
+            return View(curso);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateItem(Curso curso)
+        {
+            await cosmosDbService.UpdateItemAsync(curso);
+            return RedirectToAction("ListAllItems");
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> RemoveItem(string id, string categoria)
+        {
+            var curso = await cosmosDbService.FindItemAsync(id, categoria);
+            return View(curso);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> RemoveItem(Curso curso)
+        {
+            await cosmosDbService.RemoveItemAsync(curso.id!, curso.categoria!);
+            return RedirectToAction("ListAllItems");
         }
     }
 }
